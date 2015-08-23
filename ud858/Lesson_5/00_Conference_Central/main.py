@@ -15,12 +15,13 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 import webapp2
 from google.appengine.api import app_identity
 from google.appengine.api import mail
+from google.appengine.api import memcache
 from conference import ConferenceApi
 
 class SetAnnouncementHandler(webapp2.RequestHandler):
     def get(self):
         """Set Announcement in Memcache."""
-        # TODO 1
+        ConferenceApi._cacheAnnouncement()
 
 
 class SendConfirmationEmailHandler(webapp2.RequestHandler):
