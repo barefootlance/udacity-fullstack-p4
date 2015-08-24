@@ -194,6 +194,8 @@ class ConferenceApi(remote.Service):
         # convert the session type from enum to string
         if data['typeOfSession']:
             data['typeOfSession'] = str(data['typeOfSession'])
+        else:
+            data['typeOfSession'] = 'NOT_SPECIFIED'
 
         # Now create the session key.
         # We want an ancestor relationship with the conference. This
