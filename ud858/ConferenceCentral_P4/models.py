@@ -48,6 +48,38 @@ class BooleanMessage(messages.Message):
     """BooleanMessage-- outbound Boolean value message"""
     data = messages.BooleanField(1)
 
+class WebsafeConferenceKeyMessage(messages.Message):
+    """WebsafeConferenceKeyMessage --
+    outbound websafe conference key
+    """
+    websafeConferenceKey = messages.StringField(1, required=True)
+
+class Session(ndb.Model):
+    """Conference session model"""
+    name            = ndb.StringProperty(required=True)
+    highlights      = ndb.StringProperty(repeated=True)
+    speaker         = ndb.StringProperty() # TODO: make into a class
+    duration        = ndb.TimeProperty()
+    typeOfSession   = ndb.StringProperty(default='NOT_SPECIFIED')
+    # TODO: do we need to split into Date and Time values separately?
+    # The issue is that then we could query on date without using
+    # an inequality, which means we would be more flexible. In that
+    # case we'd have one LocalDateProperty() and one LocalTimeProperty().
+    localDate       = ndb.DateProperty()
+    localTime       = ndb.TimeProperty()
+    conferenceId    = ndb.IntegerProperty(required=True) #parent
+
+class SessionForm(messages.Message):
+    """Conference session Form -- Conference session outbound form message"""
+    name            = messages.StringField(1)
+    highlights      = messages.StringField(2, repeated=True)
+    speaker         = messages.StringField(3)
+    duration        = messages.StringField(4) #TimeField()
+    typeOfSession   = messages.EnumField('SessionType', 5)
+    localDate       = messages.StringField(6) #DateField()
+    localTime       = messages.StringField(7) #TimeField()
+    conferenceWebsafeKey = messages.StringField(8)
+
 class Conference(ndb.Model):
     """Conference -- Conference object"""
     name            = ndb.StringProperty(required=True)
@@ -98,6 +130,13 @@ class TeeShirtSize(messages.Enum):
     XXXL_M = 14
     XXXL_W = 15
 
+class SessionType(messages.Enum):
+    """SessionType -- session enumeration value"""
+    NOT_SPECIFIED = 1
+    LECTURE = 2
+    KEYNOTE = 3
+    WORKSHOP = 4
+
 class ConferenceQueryForm(messages.Message):
     """ConferenceQueryForm -- Conference query inbound form message"""
     field = messages.StringField(1)
@@ -107,4 +146,3 @@ class ConferenceQueryForm(messages.Message):
 class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
-
