@@ -80,6 +80,10 @@ class SessionForm(messages.Message):
     localTime       = messages.StringField(7) #TimeField()
     conferenceWebsafeKey = messages.StringField(8)
 
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)
+
 class Conference(ndb.Model):
     """Conference -- Conference object"""
     name            = ndb.StringProperty(required=True)
