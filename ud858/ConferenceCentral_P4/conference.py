@@ -99,6 +99,12 @@ WEBSAFE_CONFERENCE_KEY_GET_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
     )
 
+CONFERENCE_SESSIONS_BY_TYPE_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.StringField(2)
+    )
+
 SESSION_POST_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     websafeConferenceKey=messages.StringField(1),
@@ -252,12 +258,28 @@ class ConferenceApi(remote.Service):
                 'No conference found with key: %s' % request.websafeConferenceKey)
 
         # create ancestor query for all key matches for this conference
-        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-        print conference.key.id()
-        print conference.key
         sessions = Session.query(ancestor=conference.key)
-        #print "SESSIONS"
-        #print sessions
+
+        # return set of ConferenceForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+    @endpoints.method(CONFERENCE_SESSIONS_BY_TYPE_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/session/{typeOfSession}',
+            http_method='POST',
+            name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Return all the sessions for a conference."""
+
+        # Make sure the conference exists
+        conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conference:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % request.websafeConferenceKey)
+
+        # create ancestor query for all key matches for this conference
+        sessions = Session.query(ancestor=conference.key).filter(Session.typeOfSession==request.typeOfSession)
 
         # return set of ConferenceForm objects per Conference
         return SessionForms(
