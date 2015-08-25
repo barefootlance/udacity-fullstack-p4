@@ -54,6 +54,21 @@ class WebsafeConferenceKeyMessage(messages.Message):
     """
     websafeConferenceKey = messages.StringField(1, required=True)
 
+class Speaker(ndb.Model):
+    """Speaker -- Session speaker object"""
+    displayName = ndb.StringProperty(required=True)
+    bio = ndb.TextProperty()
+
+class SpeakerForm(messages.Message):
+    """Speaker Form -- Speaker outbound form message"""
+    displayName     = messages.StringField(1)
+    bio             = messages.StringField(2)
+    websafeKey      = messages.StringField(3)
+
+class SpeakerForms(messages.Message):
+    """SpeakerForms -- multiple Speaker outbound form message"""
+    items = messages.MessageField(SpeakerForm, 1, repeated=True)
+
 class Session(ndb.Model):
     """Conference session model"""
     name            = ndb.StringProperty(required=True)
@@ -68,6 +83,7 @@ class Session(ndb.Model):
     localDate       = ndb.DateProperty()
     localTime       = ndb.TimeProperty()
     conferenceId    = ndb.IntegerProperty(required=True) #parent
+    speakerIds      = ndb.IntegerProperty(repeated=True)
 
 class SessionForm(messages.Message):
     """Conference session Form -- Conference session outbound form message"""
@@ -79,6 +95,7 @@ class SessionForm(messages.Message):
     localDate       = messages.StringField(6) #DateField()
     localTime       = messages.StringField(7) #TimeField()
     conferenceWebsafeKey = messages.StringField(8)
+    speakerWebsafeKeys = messages.StringField(9, repeated=True)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
