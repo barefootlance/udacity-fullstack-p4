@@ -14,6 +14,7 @@ __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 
 from datetime import datetime
+from datetime import time
 
 import endpoints
 from protorpc import messages
@@ -112,6 +113,11 @@ CONFERENCE_SESSIONS_BY_TYPE_GET_REQUEST = endpoints.ResourceContainer(
 SPEAKER_SESSIONS_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSpeakerKey=messages.StringField(1)
+    )
+
+SESSION_TOPIC_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    topic=messages.StringField(1)
     )
 
 SESSION_POST_REQUEST = endpoints.ResourceContainer(
@@ -249,7 +255,8 @@ class ConferenceApi(remote.Service):
                 setattr(sf, field.name, session.key.urlsafe())
             elif field.name == 'conferenceWebsafeKey':
                 key = session.key.parent()
-                setattr(sf, field.name, key.urlsafe())
+                if key:
+                    setattr(sf, field.name, key.urlsafe())
             elif field.name == 'speakerWebsafeKeys':
                 # convert the speaker ids to websafe keys
                 ids = getattr(session, 'speakerIds')
@@ -409,6 +416,52 @@ class ConferenceApi(remote.Service):
 
         # create ancestor query for all key matches for this conference
         sessions = Session.query(ancestor=conference.key).filter(Session.typeOfSession==request.typeOfSession)
+
+        # return set of ConferenceForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+
+    @endpoints.method(SESSION_TOPIC_GET_REQUEST, SessionForms,
+            path='session/topic',
+            http_method='GET',
+            name='getSessionsByTopic')
+    def getSessionsByTopic(self, request):
+        """Return sesssions where the title or the highlights
+        contain the given topic keyword.
+        """
+
+        lowerTopic = request.topic.lower()
+        sessions = []
+        for session in Session.query():
+            if lowerTopic in session.name.lower():
+                sessions.append(session)
+            elif session.highlights:
+                for highlight in session.highlights:
+                    if lowerTopic in highlight.lower():
+                        sessions.append(session)
+                        break
+
+        # return set of ConferenceForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='session/getNonWorkshopsBefore7',
+            http_method='POST',
+            name='getNonWorkshopsBefore7')
+    def getNonWorkshopsBefore7(self, request):
+        """Return sesssions where the title or the highlights
+        contain the given topic keyword.
+        """
+        sevenPM = time(19)
+        sessions = Session.query(Session.typeOfSession != "WORKSHOP" and
+                                 Session.localTime < sevenPM) \
+                          .order(Session.localTime) \
+                          .order(Session.typeOfSession)
 
         # return set of ConferenceForm objects per Conference
         return SessionForms(
