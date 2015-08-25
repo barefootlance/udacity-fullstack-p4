@@ -27,6 +27,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    wishlistSessionKeys = ndb.StringProperty(repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -53,6 +54,12 @@ class WebsafeConferenceKeyMessage(messages.Message):
     outbound websafe conference key
     """
     websafeConferenceKey = messages.StringField(1, required=True)
+
+class WebsafeSessionKeyMessage(messages.Message):
+    """WebsafeSessionKeyMessage --
+    inbound websafe session key
+    """
+    websafeSessionKey = messages.StringField(1, required=True)
 
 class Speaker(ndb.Model):
     """Speaker -- Session speaker object"""
@@ -82,7 +89,6 @@ class Session(ndb.Model):
     # case we'd have one LocalDateProperty() and one LocalTimeProperty().
     localDate       = ndb.DateProperty()
     localTime       = ndb.TimeProperty()
-    conferenceId    = ndb.IntegerProperty(required=True) #parent
     speakerIds      = ndb.IntegerProperty(repeated=True)
 
 class SessionForm(messages.Message):
@@ -96,6 +102,7 @@ class SessionForm(messages.Message):
     localTime       = messages.StringField(7) #TimeField()
     conferenceWebsafeKey = messages.StringField(8)
     speakerWebsafeKeys = messages.StringField(9, repeated=True)
+    websafeKey      = messages.StringField(10)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""

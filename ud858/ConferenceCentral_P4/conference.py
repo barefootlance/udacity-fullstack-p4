@@ -44,6 +44,7 @@ from models import WebsafeConferenceKeyMessage
 from models import Speaker
 from models import SpeakerForm
 from models import SpeakerForms
+from models import WebsafeSessionKeyMessage
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -244,11 +245,11 @@ class ConferenceApi(remote.Service):
                     setattr(sf, field.name, getattr(SessionType, value))
                 else:
                     setattr(sf, field.name, getattr(session, field.name))
+            elif field.name == 'websafeKey':
+                setattr(sf, field.name, session.key.urlsafe())
             elif field.name == 'conferenceWebsafeKey':
-                # convert the conference id to a websafe key
-                key = ndb.Key(Conference, getattr(session, 'conferenceId'))
-                if key:
-                    setattr(sf, field.name, key.urlsafe())
+                key = session.key.parent()
+                setattr(sf, field.name, key.urlsafe())
             elif field.name == 'speakerWebsafeKeys':
                 # convert the speaker ids to websafe keys
                 ids = getattr(session, 'speakerIds')
@@ -329,9 +330,7 @@ class ConferenceApi(remote.Service):
         # 4) and then we'll save the key away
         data['key'] = session_key
 
-        # keep the conference id and toss the websafe key
-        # TODO: is this the correct thing to do? Keep websafe? Keep both?
-        data['conferenceId'] = conference_key.id()
+        # toss the websafe key
         del data['conferenceWebsafeKey']
 
         # get rid of the websafeConferenceKey that was passed in
@@ -345,6 +344,9 @@ class ConferenceApi(remote.Service):
                 ids.append(speaker.key.id())
             data['speakerIds'] = ids
             del data['speakerWebsafeKeys']
+
+        # delete the websafe key. We already have the id.
+        del data['websafeKey']
 
         # create Session, send email to organizer confirming
         # creation of Session & return websafe conference key
@@ -723,6 +725,62 @@ class ConferenceApi(remote.Service):
     def saveProfile(self, request):
         """Update & return user profile."""
         return self._doProfile(request)
+
+    @endpoints.method(WebsafeSessionKeyMessage, ProfileForm,
+            path='profile/wishlist',
+            http_method='POST',
+            name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Adds a session to the user wishlist and returns the
+        updated profile.
+        """
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        # Make sure the session exists
+        session_key = ndb.Key(urlsafe=request.websafeSessionKey)
+        session = session_key.get()
+        if not session:
+            raise endpoints.NotFoundException(
+                'No session found with key: %s' % request.websafeSessionKey)
+
+        # make sure the session isn't already in the wishlist
+        session_id = session.key.id()
+        profile = self._getProfileFromUser()
+        if session_key.urlsafe() in profile.wishlistSessionKeys:
+            raise endpoints.BadRequestException("Session already in wishlist.")
+
+        profile.wishlistSessionKeys.append(session_key.urlsafe())
+        profile.put()
+
+        # return the updated profile
+        return self._copyProfileToForm(profile)
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='profile/wishlist',
+            http_method='GET',
+            name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Return the sessions in the user's wishlist.
+        """
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        # get the user's profile
+        profile = self._getProfileFromUser()
+        sessionForms = []
+        for websafe_key in profile.wishlistSessionKeys:
+            key = ndb.Key(urlsafe=websafe_key)
+            session = key.get()
+            if session:
+                sessionForms.append(self._copySessionToForm(session))
+
+        # return set of ConferenceForm objects per Conference
+        return SessionForms(items=sessionForms)
 
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
