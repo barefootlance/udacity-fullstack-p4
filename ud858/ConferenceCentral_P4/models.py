@@ -89,20 +89,19 @@ class Session(ndb.Model):
     # case we'd have one LocalDateProperty() and one LocalTimeProperty().
     localDate       = ndb.DateProperty()
     localTime       = ndb.TimeProperty()
-    speakerIds      = ndb.IntegerProperty(repeated=True)
+    speakerWebsafeKeys = ndb.StringProperty(repeated=True)
 
 class SessionForm(messages.Message):
     """Conference session Form -- Conference session outbound form message"""
     name            = messages.StringField(1)
     highlights      = messages.StringField(2, repeated=True)
-    speaker         = messages.StringField(3)
-    duration        = messages.StringField(4) #TimeField()
-    typeOfSession   = messages.EnumField('SessionType', 5)
-    localDate       = messages.StringField(6) #DateField()
-    localTime       = messages.StringField(7) #TimeField()
-    conferenceWebsafeKey = messages.StringField(8)
-    speakerWebsafeKeys = messages.StringField(9, repeated=True)
-    websafeKey      = messages.StringField(10)
+    duration        = messages.StringField(3) #TimeField()
+    typeOfSession   = messages.EnumField('SessionType', 4)
+    localDate       = messages.StringField(5) #DateField()
+    localTime       = messages.StringField(6) #TimeField()
+    conferenceWebsafeKey = messages.StringField(7)
+    speakerWebsafeKeys = messages.StringField(8, repeated=True)
+    websafeKey      = messages.StringField(9)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""

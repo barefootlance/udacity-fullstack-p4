@@ -59,6 +59,8 @@ API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 DEFAULTS = {
@@ -161,6 +163,10 @@ class ConferenceApi(remote.Service):
         # copy ConferenceForm/ProtoRPC Message into dict
         data = {field.name: getattr(request, field.name) for field in request.all_fields()}
 
+        # this is automatically generated for display but should
+        # be ignored if it is input.
+        del data['websafeKey']
+
         # Now create the speaker key.
         # NOTE: allocate_ids returns a list, so take the first element.
         speaker_id = Speaker.allocate_ids(size=1)[0]
@@ -257,16 +263,6 @@ class ConferenceApi(remote.Service):
                 key = session.key.parent()
                 if key:
                     setattr(sf, field.name, key.urlsafe())
-            elif field.name == 'speakerWebsafeKeys':
-                # convert the speaker ids to websafe keys
-                ids = getattr(session, 'speakerIds')
-                if ids:
-                    swsks = []
-                    for id in ids:
-                        key = ndb.Key(Speaker, id)
-                        if key:
-                            swsks.append(key.urlsafe())
-                    setattr(sf, field.name, swsks)
         sf.check_initialized()
         return sf
 
@@ -305,10 +301,12 @@ class ConferenceApi(remote.Service):
         # convert dates from strings to Date objects
         if data['localDate']:
             data['localDate'] = datetime.strptime(data['localDate'][:10], "%Y-%m-%d").date()
-
-        if data['localDate'] < conference.startDate or \
-           data['localDate'] > conference.endDate:
-                raise endpoints.BadRequestException("Session 'localDate': not within conference dates.")
+            if conference.startDate and \
+               data['localDate'] < conference.startDate:
+                    raise endpoints.BadRequestException("Session 'localDate': not within conference dates.")
+            if conference.endData and \
+               data['localDate'] > conference.endDate:
+                    raise endpoints.BadRequestException("Session 'localDate': not within conference dates.")
 
         # convert times from strings to Time objects
         if data['duration']:
@@ -343,25 +341,31 @@ class ConferenceApi(remote.Service):
         # get rid of the websafeConferenceKey that was passed in
         del data['websafeConferenceKey']
 
-        # convert the speaker web safe keys to IDs
-        if data['speakerWebsafeKeys']:
-            ids = []
-            for swsk in data['speakerWebsafeKeys']:
-                speaker = ndb.Key(urlsafe=swsk).get()
-                ids.append(speaker.key.id())
-            data['speakerIds'] = ids
-            del data['speakerWebsafeKeys']
-
         # delete the websafe key. We already have the id.
         del data['websafeKey']
 
         # create Session, send email to organizer confirming
         # creation of Session & return websafe conference key
         Session(**data).put()
+
         taskqueue.add(params={'email': user.email(),
             'sessionInfo': repr(request)},
             url='/tasks/send_session_confirmation_email'
         )
+
+        # If there is more than one session by this speaker at this
+        # conference, also add a new Memcache entry that features the
+        # speaker and session names.
+        # NOTE: we allow for multiple speakers, but this reports only
+        # the first one.
+        print data['speakerWebsafeKeys']
+        for speaker_wsk in data['speakerWebsafeKeys']:
+            sessions = Session.query(ancestor=conference_key).filter(Session.speakerWebsafeKeys==speaker_wsk).fetch()
+            if sessions and len(sessions) > 1:
+                speaker = ndb.Key(urlsafe=speaker_wsk).get()
+                self.cacheFeaturedSpeaker(speaker, sessions)
+                break
+
         return request
 
 
@@ -869,6 +873,39 @@ class ConferenceApi(remote.Service):
     def getAnnouncement(self, request):
         """Return Announcement from memcache."""
         return StringMessage(data=memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY) or "")
+
+
+
+# - - - Featured Speaker - - - - - - - - - - - - - - - - - - - -
+
+    def cacheFeaturedSpeaker(self, speaker, sessions):
+        """Create announcement about a featured speaker & assign to
+        memcache; used by memcache cron job &
+        setFeaturedSpeakerHandler().
+        """
+        if speaker:
+            conference = sessions[0].key.parent().get()
+
+            text = '{S} is speaking a bunch at the {C} conference!' \
+                   .format(S=speaker.displayName, C=conference.name)
+            for session in sessions:
+                text += ' {S}!'.format(S=session.name)
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, text)
+        else:
+            # NOTE: we're never clearing the cache. Should probably
+            # do that after the conference is over...chron job...?
+            text = ""
+            memcache.delete(MEMCACHE_FEATURED_SPEAKER_KEY)
+
+        return text
+
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+        path='conference/featuredspeaker/get',
+        http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return Featured Speaker from memcache."""
+        return StringMessage(data=memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY) or "")
 
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
