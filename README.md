@@ -14,6 +14,12 @@ The following endpoints are implemented per the spec:
 * createSession(SessionForm, websafeConferenceKey) -- open only to the organizer of the conference
 * addSessionToWishlist(SessionKey) -- adds the session to the user's list of sessions they are interested in attending. You can decide if they can only add conference they have registered to attend or if the wishlist is open to all conferences.
 * getSessionsInWishlist() -- query for all the sessions in a conference that the user is interested in
+* getFeaturedSpeaker() -- returns the featured speaker announcement from the memcache, if available. The Featured Speaker announcement is added to the memcache if the speaker has more than one session in a given conference, and is posted when a new session containing that speaker is added.
+
+Two additional APIs were implemented to support the new classes:
+
+* getSpeakers(VoidMessage, SpeakerForms) -- Returns all the speakers in the database.
+* getSessionsByTopic(topic, SessionForms) -- Returns all the sessions which contain the topic in either the name or highlights.
 
 The following model classes were created to support the new endpoints:
 For Sessions:
@@ -31,102 +37,61 @@ For Speakers
 Speakers are implemented as their own kind. This allows us to track other information about the speaker. In this barebones implementation there is only a bio field for biographical information, but adding contact information or a photo would certainly be other reasonable fields.
 
 Speakers are independent, having no ancestral relations. This allows the same speaker to appear in multiple sessions across different conferences.
+App Engine application for the Udacity training course.
+
+## Query Related Problem (task 3):
+
+The main problem I have with the query is how to deal with missing data. For example, if a session doesn't have a start time included (it's stil TBD), should that be included in the list or not. Ditto with if the session type hasn't been defined.
+
+Though not implemented in the appropriately named getNonWorkshopsBefore7 endpoint, to get around that I would have add a parameter to the endpoint that allows the caller to determine the behavior (and probably leave that determination up to the user - some will want to see the sessions that have omitted information and some won't).
+
+## Products
+- [App Engine][1]
+
+## Language
+- [Python][2]
+
+## APIs
+- [Google Cloud Endpoints][3]
 
 ## Requirements
-This project was tested on Python 2.7 using the following additional libararies:
+This project was developed on Ubuntu 14.04 using Python 2.7 and Google App Engine 1.9.25.
 
-Flask==0.9
+### Setup Instructions
 
-SQLAlchemy==0.8.4
+If you would like to modify the code to run under your own app engine id and make your own changes:
 
-httplib2==0.9.1
+1. Update the value of `application` in `app.yaml` to the app ID you
+   have registered in the App Engine admin console and would like to use to host
+   your instance of this sample.
+1. Update the values at the top of `settings.py` to
+   reflect the respective client IDs you have registered in the
+   [Developer Console][4].
+1. Update the value of CLIENT_ID in `static/js/app.js` to the Web client ID
+1. (Optional) Mark the configuration files as unchanged as follows:
+   `$ git update-index --assume-unchanged app.yaml settings.py static/js/app.js`
+1. Run the app with the devserver using `dev_appserver.py DIR`, and ensure it's running by visiting your local server's address (by default [localhost:8080][5].)
+1. (Optional) Generate your client library(ies) with [the endpoints tool][6].
+1. Deploy your application.
 
-oauth2client==1.4.12
 
-requests==2.2.1
+[1]: https://developers.google.com/appengine
+[2]: http://python.org
+[3]: https://developers.google.com/appengine/docs/python/endpoints/
+[4]: https://console.developers.google.com/
+[5]: https://localhost:8080/
+[6]: https://developers.google.com/appengine/docs/python/endpoints/endpoints_tool
 
 ## Installation
 
-* Clone the repo: `git clone https://github.com/barefootlance/udacity-fullstack-p3.git`.
-
-### To run on the provided VM
-* Install Vagrant
-* Install Virtual Box.
-
-### To run on your own Python installation
-* Install the required libraries list in Requirements. This is most easily done with by running `pip install -r <path to>/fullstack-nanodegree-vm/vagrant/catalog/requirements.txt`.
-
-## Setup
-The download includes a database pre-populated with sample categories and items.
-
-If you would like to start with a clean database:
-* Delete the catalog.db file.
-* Create a new database by running `python database_setup.py`.
+* Clone the repo: `git clone https://github.com/barefootlance/udacity-fullstack-p4.git`.
+* Install Google App Engine
 
 ## Running the project
 
-* `cd <path to>/fullstack-nanodegree-vm/vagrant/catalog`
+* `cd <path to>/ud858`
 
-To run on the virtual machine:
-  * start up the virtual machine with the command `vagrant up`
-  * ssh into the virtual machine with the command `vagrant ssh`
-  * `cd /vagrant`
+See the Google documentaion on developing and testing at https://cloud.google.com/appengine/docs/python/endpoints/test_deploy. But it that's TL;DR:
 
-* Whether running on the VM or not, now run `python project.py` to start the web server.
-
-By default the program is served on port 5000. You can change the port by editing project.py and changing the line `app.run(host='0.0.0.0', port=5000)` to the port you want. NOTE: if you run using the VM you will also need to make sure the port is exposed by VM by editing Vagrantfile and changing the line `config.vm.network "forwarded_port", guest: 5000, host: 5000`, where the guest port is the port in project.py and the host port is the port you want to use on your machine.
-
-## Usage
-
-To view the main page, open a web browser and enter `http://localhost:5000`. Note using `127.0.0.1:5000` will show the page as well, but not all Oauth2 providers will work from that address; this is because some providers allow only a single address for a redirect uri, so can't support both localhost and 127.0.0.1.
-
-* The site is a generic catalog of items.
-* The left side is a menu listing different categories of items. Clicking on a category takes you to a page listing the items in a category. The right (content) pane showing rotating images for each of the categories. Clicking on an image takes you to the page for that category.
-* For a category page, the items are displayed both in the menu and with an image in the content pane. Clicking on either takes you to a page for that item.
-* An item page displays all the information for that item.
-* At the top of each page is a link for logging in. Categories and items can be added, edited, and deleted by logged in users. However, a user can only edit or delete items they have created. Login in requires an account on one of the Oauth2 providers shown on the login page: Google, Facebook, Amazon, or Reddit.
-* When logged in, the menu will contain links for editing categories and items based on the page you are on and whether or not you created the category or item. The person who created the category or item is listed at the bottom of the page (but only for logged in users).
-* For categories and items, clicking on the name displays a Google search of the term in a separate tab.
-* Clicking on images (except the rotating images on the main Catalog page) opens a page to see a full sized view of the image.
-
-### Accessing JSON and XML endpoints
-
-There are four endpoints for both JSON and XML. They provide access to a single category, a list of all categories, an item, and a list of all items for a particular category. NOTE: all timestamps are UTC.
-
-Category:
-  * /category/<int:category_id>/JSON
-  * /category/<int:category_id>/XML
-
-Category list:
-  * /category/JSON
-  * /category/XML
-
-Item:
-  * /category/<int:category_id>/item/<int:item_id>/JSON
-  * /category/<int:category_id>/item/<int:item_id>/XML
-
-Item list:
-  * /category/<int:category_id>/item/JSON
-  * /category/<int:category_id>/item/XML
-
-## Conclusions and Reflections
-
-Although this project is heavily based on existing code, it is large enough that refactoring of the code from previous projects was required. My experience with Python is pretty limited, so if it looks like someone is trying to impose C++ OOP sensibilities on Python, you're probably right.
-
-The main project.py file runs the web server and acts as a router for the endpoints, but all the heavy lifting has been moved to other modules.
-
-It was relatively obvious that I needed to pull the oauth handling code into different provider classes, but I have no idea if I used best practices in doing so. The structure that I added did make it easier to add new providers (Amazon and Reddit), but it feels like there should be more commonality, and I don't know if using a "virtual" base class is best Python practice, but it did give me a place to put shared oauth methods.
-
-The code feels pretty good, at least for the quality needed for this project (in my mind anyway, your mileage may vary). There are some things I would want to address for production code.
-
-User logins are vague to me. Using email as a unique identifier is lovely until you run across Reddit that doesn't provide emails. I opted to stick the username in the email column which works for this project because it's unique, but it obviously pollutes the email column which may or may not be okay depending on whether you are planning to spam your users or not. For this project I deem it okay...but probably wouldn't do it in the real world. The key thing is that you want a unique identifier for each user aside from our internal user id. However, unique identifiers vary from provider to provider. Emails seem like a good idea when you look at Google, but the Reddit doesn't have one, and it looks like GitHub has multiple emails for a single acccount, and I believe you can change your primary email for Facebook - and in the current implementation, changing your email means that you can't edit categories and items you've created. The unique identifier really needs to be addressed on a per provider basis rather than using emails. Further, there should be some facility for combining multiple oauth accounts for a single user. (Sorry for the wall of text.)
-
-What the devil is going on with oauth disconnecting? When do I need to log out? When don't I?
-
-I don't know ajax well enough to repicate the Google and Facebook login processing from the oauth processing. What I've implemented works, but I'd rather be more consistent. (Yes, there are a lot of oauth-related issues. Guess what technology I am least familiar with...)
-
-There should be an administrator level of authorization in order to edit Users.
-
-When creating or editing an item, putting in an image url should show you the image that you're about to add. The GUI is not modal, so it's pretty quick to go back and change something, but it seems like that would be a nice touch.
-
-In HTML: tables vs. grids. Grids sound good, but they seem not ready for prime time. Tables are more reliable, but require more support code. I use both in this project, but it is not yet clear to me when to opt for one over the other.
+* `python <path to>/dev_appserver.py ConferenceCentral_P4` runs the site with the development webserver at localhost:8080
+* After the webserver is running, you can access the apis by going to `http://localhost:8080/_ah/api/explorer` in your browser. NOTE: some APIs will require you to authenticate with a Google signin. If you are not signed in you will get a 401 error. To sign in turn the `Authorize requests using OAuth 2.0` slider in the top right corner to On.
