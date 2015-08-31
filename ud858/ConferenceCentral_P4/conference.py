@@ -127,6 +127,10 @@ SESSION_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
+    websafeSessionKey=messages.StringField(1, required=True),
+)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -304,7 +308,7 @@ class ConferenceApi(remote.Service):
             if conference.startDate and \
                data['localDate'] < conference.startDate:
                     raise endpoints.BadRequestException("Session 'localDate': not within conference dates.")
-            if conference.endData and \
+            if conference.endDate and \
                data['localDate'] > conference.endDate:
                     raise endpoints.BadRequestException("Session 'localDate': not within conference dates.")
 
@@ -312,7 +316,7 @@ class ConferenceApi(remote.Service):
         if data['duration']:
             data['duration'] = datetime.strptime(data['duration'][:5], "%H:%M").time()
         if data['localTime']:
-            data['localTime'] = datetime.strptime(data['startTime'][:5], "%H:%M").time()
+            data['localTime'] = datetime.strptime(data['localTime'][:5], "%H:%M").time()
 
         # convert the session type from enum to string
         if data['typeOfSession']:
@@ -783,7 +787,7 @@ class ConferenceApi(remote.Service):
         """Update & return user profile."""
         return self._doProfile(request)
 
-    @endpoints.method(WebsafeSessionKeyMessage, ProfileForm,
+    @endpoints.method(WISHLIST_POST_REQUEST, ProfileForm,
             path='profile/wishlist',
             http_method='POST',
             name='addSessionToWishlist')

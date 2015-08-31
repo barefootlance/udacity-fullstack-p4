@@ -40,29 +40,29 @@ class SendConfirmationEmailHandler(webapp2.RequestHandler):
 
 class SendSessionConfirmationEmailHandler(webapp2.RequestHandler):
     def post(self):
-    """Send email confirming onference Session creation."""
-    mail.send_mail(
-        'noreply@%s.appspotmail.com' % (
-            app_identity.get_application_id()),     # from
-        self.request.get('email'),                  # to
-        'You created a new Session!',            # subj
-        'Hi, you have created a following '         # body
-        'session:\r\n\r\n%s' % self.request.get(
-            'sessionInfo')
-    )
+        """Send email confirming onference Session creation."""
+        mail.send_mail(
+            'noreply@%s.appspotmail.com' % (
+                app_identity.get_application_id()),     # from
+            self.request.get('email'),                  # to
+            'You created a new Session!',            # subj
+            'Hi, you have created a following '         # body
+            'session:\r\n\r\n%s' % self.request.get(
+                'sessionInfo')
+        )
 
 
 class SendSpeakerConfirmationEmailHandler(webapp2.RequestHandler):
     def post(self):
-    """Send email confirming Speaker creation."""
-    mail.send_mail(
-        'noreply@%s.appspotmail.com' % (
-            app_identity.get_application_id()),     # from
-        self.request.get('email'),                  # to
-        'You created a new Speaker!',            # subj
-        'Hi, you have created a following '         # body
-        'speaker:\r\n\r\n%s' % self.request.get(
-        'speakerInfo')
+        """Send email confirming Speaker creation."""
+        mail.send_mail(
+            'noreply@%s.appspotmail.com' % (
+                app_identity.get_application_id()),     # from
+            self.request.get('email'),                  # to
+            'You created a new Speaker!',            # subj
+            'Hi, you have created a following '         # body
+            'speaker:\r\n\r\n%s' % self.request.get(
+            'speakerInfo')
         )
 
 
