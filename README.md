@@ -43,11 +43,9 @@ App Engine application for the Udacity training course.
 
 The query relation problem in task 3 is given as: "Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?"
 
-The basic solution is, of course to query for all sessions where typeOfSession != WORKSHOP, and localTime < 19:00. However, the main problem I have with the query is how to deal with missing data. For example, if a session doesn't have a start time included (it's stil TBD), should that be included in the list or not. Ditto with if the session type hasn't been defined.
+The basic solution is, of course to query for all sessions where typeOfSession != WORKSHOP, and localTime <= 19:00. The challenge is that Appengine Datastore allows only one inequality per query, so a workaround is needed to support this case. I opted to break the query into to two steps: first, query datastore with one property; then filter the query results to handle the second inequality. In particular, I query by time first (because that allows me to order by time), then iterate over the results, excluding any WORKSHOP sessions that were returned before returning my own api results.
 
-You could make both parameters be required - which might make sense for typeOfSession because you could add a catchall OTHER type. However, doing that for session times would be problematic as times (and even dates) are often To Be Determined when the session is first created, so regardless of data implementation this will likely always be an issue.
-
-Though not implemented in the appropriately named getNonWorkshopsBefore7 endpoint, to get around that I would have add a parameter to the endpoint that allows the caller to determine the behavior (and probably leave that determination up to the user - some will want to see the sessions that have omitted information and some won't).
+Note that this implementation includes in its results any session that does not have a defined start time.
 
 ## Products
 - [App Engine][1]
@@ -100,4 +98,4 @@ See the Google documentaion on developing and testing at https://cloud.google.co
 * `python <path to>/dev_appserver.py ConferenceCentral_P4` runs the site with the development webserver at localhost:8080
 * After the webserver is running, you can access the apis by going to `http://localhost:8080/_ah/api/explorer` in your browser. NOTE: some APIs will require you to authenticate with a Google signin. If you are not signed in you will get a 401 error. To sign in turn the `Authorize requests using OAuth 2.0` slider in the top right corner to On.
 * To deploy to appspot, `python <path to>/appcfg.py update ConferenceCentral_P4`.
-* To access the upploaded APIs for this implementation: `https://apis-explorer.appspot.com/apis-explorer/?base=https://https://apis-explorer.appspot.com/apis-explorer/?base=https://udacity-project-4-1044.appspot.com/_ah/api#p/.appspot.com/_ah/api`.
+* To access the upploaded APIs for this implementation: `https://udacity-project-4-1044.appspot.com/_ah/api/explorer`.

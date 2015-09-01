@@ -391,7 +391,7 @@ class ConferenceApi(remote.Service):
 
     @endpoints.method(WEBSAFE_CONFERENCE_KEY_GET_REQUEST, SessionForms,
         path='conference/{websafeConferenceKey}/session',
-        http_method='POST', name='getConferenceSessions')
+        http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self, request):
         """Return all the sessions for a conference."""
 
@@ -465,15 +465,25 @@ class ConferenceApi(remote.Service):
         """Return sesssions where the title or the highlights
         contain the given topic keyword.
         """
+        # NOTE: we want "localTime < 7pm and session is not a workshop",
+        # however, we can only have one inequality per query, so we
+        # query on time first (so that we can sort on it), and then
+        # filter the workshop sessions out with an in-memory loop.
+        # ALSO NOTE that we allow None session types and times through.
         sevenPM = time(19)
-        sessions = Session.query(Session.typeOfSession != "WORKSHOP" and
-                                 Session.localTime < sevenPM) \
-                          .order(Session.localTime) \
-                          .order(Session.typeOfSession)
+        sessions = Session.query(not Session.localTime or Session.localTime <= sevenPM) \
+                          .order(Session.localTime)
+
+        result = []
+        for session in sessions:
+            # skip workshop sessions
+            if session.typeOfSession and session.typeOfSession == 'WORKSHOP':
+                continue
+            result.append(session)
 
         # return set of ConferenceForm objects per Conference
         return SessionForms(
-            items=[self._copySessionToForm(session) for session in sessions]
+            items=[self._copySessionToForm(session) for session in result]
         )
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
